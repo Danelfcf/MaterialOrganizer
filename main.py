@@ -1,6 +1,8 @@
 from PyQt6.QtWidgets import QApplication, QWidget
 # Only needed for access to command line arguments
 import sys
+# Only to access database
+from pymongo import MongoClient
 
 class MainGUI:
     def __init__(self):
@@ -9,6 +11,8 @@ class MainGUI:
         # If you know you won't use command line arguments QApplication([]) works too.
         app = QApplication(sys.argv)
 
+        print(self.connecttoDB())
+
         # Create a Qt widget, which will be our window.
         window = QWidget()
         window.show()  # IMPORTANT!!!!! Windows are hidden by default.
@@ -16,6 +20,12 @@ class MainGUI:
         # Start the event loop.
         app.exec()
 
+    def connecttoDB(self):
+        client = MongoClient('localhost', 27017)
+        list_of_db = client.list_database_names()
+
+        print(list_of_db)
+        return client
 
 # Your application won't reach here until you exit and the event
 # loop has stopped.
