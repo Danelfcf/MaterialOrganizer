@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QApplication, QWidget
 # Only needed for access to command line arguments
 import sys
 # Only to access database
-from pymongo import MongoClient
+from tinydb import TinyDB, Query
 
 class MainGUI:
     def __init__(self):
