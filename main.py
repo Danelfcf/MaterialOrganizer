@@ -1,38 +1,84 @@
-from PyQt6.QtWidgets import QApplication, QWidget
+from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6.QtWidgets import QWidget
+from PyQt6.QtGui import QPalette, QColor
+from PyQt6 import uic
 # Only needed for access to command line arguments
 import sys
 # Only to access database
 from tinydb import TinyDB, Query
 
-class MainGUI:
+class list(QWidget):
+
+    def __init__(self, color):
+        super().__init__()
+        self.setAutoFillBackground(True)
+
+        palette = self.palette()
+        palette.setColor(QPalette.ColorRole.Window, QColor(color))
+        self.setPalette(palette)
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        uic.loadUi("MainWindow.ui", self)
+
+        self.TagsH.addWidget(list('red'))
+        self.TagsH.addWidget(list('red'))
+        self.TagsH.addWidget(list('red'))
+        self.TagsH.addWidget(list('red'))
+        self.TagsH.addWidget(list('red'))
+        self.TagsH.addWidget(list('red'))
+
+class Database():
     def __init__(self):
-        # You need one (and only one) QApplication instance per application.
-        # Pass in sys.argv to allow command line arguments for your app.
-        # If you know you won't use command line arguments QApplication([]) works too.
-        app = QApplication(sys.argv)
+        self.db = TinyDB('testdb.json')
+        self.q = Query()
+    def add(self, x):
+        '''
 
-        print(self.connecttoDB())
+        :param x:
+        :return:
+        '''
+        self.db.insert(x)
 
-        # Create a Qt widget, which will be our window.
-        window = QWidget()
-        window.show()  # IMPORTANT!!!!! Windows are hidden by default.
+    def readAll(self):
+        '''
 
-        # Start the event loop.
-        app.exec()
+        :return:
+        '''
+        return self.db.all()
 
-    def connecttoDB(self):
-        client = MongoClient('localhost', 27017)
-        list_of_db = client.list_database_names()
+    def find(self, x):
+        '''
 
-        print(list_of_db)
-        return client
+        :param x:
+        :return:
+        '''
+        return self.db.search(x)
 
-# Your application won't reach here until you exit and the event
-# loop has stopped.
+    def columnsDistinct(self, x, col):
+        '''
+
+        :param x:
+        :param col:
+        :return:
+        '''
+        values=[]
+        for i in self.db.search(x.exists()):
+            if i.get(col) not in values:
+                values.append(i.get(col))
+        return values
 
 
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    MainGUI()
+    db = Database()
+    q = db.q
+    app = QtWidgets.QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    app.exec()
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+
+    #print(db.find(q.type == 'apple'))
+    #db.add({'type': 'apple', 'count': 7})
+
+    #db.columnsDistinct(q.type, 'type')
