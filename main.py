@@ -12,7 +12,9 @@ import sqlite3
 from sqlite3 import Error
 from itertools import zip_longest
 
+
 class Row:
+
     def __init__(self, cols, data):
         self.row = []
         for i in cols:
@@ -22,8 +24,10 @@ class Row:
                 self.row.append("-")
                 # self.row.append(QtWidgets.QCheckBox())
 
+
 class ColList(QWidget):
     """lmlml"""
+
     def __init__(self, col, parent=None):
         super().__init__(parent)
         # Load the GUI
@@ -40,10 +44,13 @@ class ColList(QWidget):
 
     def clearSel(self):
         self.listWidget.clearSelection()
+
     def SelectedItems(self):
         return ([item.text() for item in self.listWidget.selectedItems()])
+
     def SC(self):
         print("hi")
+
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, *args, **kwargs):
@@ -51,11 +58,11 @@ class MainWindow(QtWidgets.QMainWindow):
         uic.loadUi("MainWindow.ui", self)
         self.scrollFilters.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        #ExcersicesTab
+        # ExcersicesTab
         self.ButtonClearAll.clicked.connect(self.clearAllSelected)
         self.ButtonApply.clicked.connect(self.applyFilters)
 
-        #Selectedtab
+        # Selectedtab
         self.ButtonPrint.clicked.connect(self.Print)
 
         # trying to enable drag and drop
@@ -103,6 +110,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def clearAllSelected(self):
         for widget in self.scrollFilters.findChildren(ColList):
             widget.clearSel()
+
     def Print(self):
         printer = QtPrintSupport.QPrinter()
         printDialog = QtPrintSupport.QPrintDialog()
@@ -126,14 +134,14 @@ class DatabaseSQLite:
                  str if database connection Failed
         """
         try:
-            db = sqlite3.connect(path+name)
+            db = sqlite3.connect(path + name)
             print(sqlite3.version)
         except Error as e:
             return e
         finally:
             if db:
                 db.close()
-                self.dbPath= path + name
+                self.dbPath = path + name
                 return True
 
     def RunCommand(self, c, inputString):
@@ -142,6 +150,7 @@ class DatabaseSQLite:
             return c.execute(inputString)
         except Error as e:
             return e
+
     def Connect(self, command, *args, **kwargs):
         """
         Input function, args and kwargs.
@@ -153,7 +162,7 @@ class DatabaseSQLite:
         """
         db = sqlite3.connect(self.dbPath)
         curser = db.cursor()
-        rt=True
+        rt = True
         try:
             rt = command(curser, *args, **kwargs).fetchall()
         except Error as e:
@@ -171,14 +180,14 @@ class DatabaseSQLite:
         :param types:
         :param adds:
         """
-        if(isinstance(table, str)) & \
-          (isinstance(Cols, list)) & \
-          (isinstance(types, list)) & \
-          (isinstance(adds, list)):
-            cmdstr=f'CREATE TABLE IF NOT EXISTS {table}(\n'
+        if (isinstance(table, str)) & \
+                (isinstance(Cols, list)) & \
+                (isinstance(types, list)) & \
+                (isinstance(adds, list)):
+            cmdstr = f'CREATE TABLE IF NOT EXISTS {table}(\n'
             for name, typ, add in list(itertools.zip_longest(Cols, types, adds, fillvalue="")):
                 cmdstr += f'{name} {typ} {add},\n'
-            cmdstr = cmdstr[:-2]+");"
+            cmdstr = cmdstr[:-2] + ");"
 
             return self.RunCommand(c, cmdstr)
 
@@ -186,13 +195,13 @@ class DatabaseSQLite:
             return False
 
     def add(self, table, data={}):
-        part1= f"INSERT INTO {table}("
-        part2= f"VALUES("
+        part1 = f"INSERT INTO {table}("
+        part2 = f"VALUES("
         for col, val in zip(data.keys(), data.values()):
             part1 += f"'{col}', "
             part2 += f"'{val}', "
 
-        cmdstr = part1[:-2]+") " + part2[:-2]+");"
+        cmdstr = part1[:-2] + ") " + part2[:-2] + ");"
         return self.Connect(self.RunCommand, cmdstr)
 
     def columnNames(self, table="Material"):
@@ -200,69 +209,13 @@ class DatabaseSQLite:
         return list(map(lambda x: x[0], a))
 
 
-
-
-class DatabaseTinyDB:
-
-    def __init__(self):
-        self.db = TinyDB('testdb.json')
-        self.q = Query()
-
-    def add(self, x):
-        '''
-
-        :param x:
-        :return:
-        '''
-        self.db.insert(x)
-
-    def readAll(self):
-        '''
-
-        :return:
-        '''
-        return self.db.all()
-
-    def find(self, field, x):
-        '''
-        Example usage: print(db.find(['type'], ['apple']))
-        :param field: (str) database 'column' to be searched for
-        :param x: (str) value looked for
-        :return: list[dic{}]
-        '''
-        #return self.db.search(self.q[tuple(field)].one_of(x))
-        print(self.db.search(self.q[tuple(field)].one_of(field)))
-        return []#self.db.search(self.db.table('_default').all())
-
-    def columnsDistinct(self, x):
-        '''
-        Must be changed, as db gets bigger this will slow down like hell. does not take nested lists into account!!
-        Used to get all valid items within a datacolumn
-        Example usage: columnsDistinct('type')
-        :param x: (str) 'column' to search for distinct items
-        :return: list[]
-        '''
-        values = []
-        for i in self.db.search(self.q[x].exists()):
-            if i.get(x) not in values:
-                values.append(i.get(x))
-        return values
-
-    def columnNames(self):
-        values = []
-        for i in self.db.table('_default').all()[0]:
-            if i not in values:
-                values.append(i)
-        return values
-
-
 if __name__ == '__main__':
     db = DatabaseSQLite()
-    #print(db.columnNames())
+    # print(db.columnNames())
     print(db.add("Material", {"id": 1,
-                        "hyperlink": "www.google.com",
-                        "level": "C2",
-                        "subject": "simple Present"}))
+                              "hyperlink": "www.google.com",
+                              "level": "C2",
+                              "subject": "simple Present"}))
 
     """
     print(db.Connect(db.CreateTable, "Material",
@@ -270,7 +223,6 @@ if __name__ == '__main__':
                    ["integer", 'text', 'text', 'text'],
                    ["NOT NULL"]))
 """
-
 
     '''
     app = QtWidgets.QApplication(sys.argv)
