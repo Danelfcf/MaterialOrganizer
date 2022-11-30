@@ -1,4 +1,10 @@
+import inspect, sys
 from tinydb import TinyDB, Query
+
+
+def Classes():
+
+    return inspect.getmembers(sys.modules[__name__], inspect.isclass)
 
 
 class DatabaseTinyDB:
@@ -53,3 +59,5 @@ class DatabaseTinyDB:
             if i not in values:
                 values.append(i)
         return values
+
+
