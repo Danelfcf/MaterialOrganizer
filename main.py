@@ -257,15 +257,31 @@ class DatabaseTinyDB:
 
 
 if __name__ == '__main__':
-    db = Database()
-    q = db.q
+    db = DatabaseSQLite()
+    #print(db.columnNames())
+    print(db.add("Material", {"id": 1,
+                        "hyperlink": "www.google.com",
+                        "level": "C2",
+                        "subject": "simple Present"}))
+
+    """
+    print(db.Connect(db.CreateTable, "Material",
+                   ["id", 'hyperlink', 'level', 'subject'],
+                   ["integer", 'text', 'text', 'text'],
+                   ["NOT NULL"]))
+"""
+
+
+    '''
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
+    window.dbLink(db)
+    window.loadTags()
     window.show()
     app.exec()
-
-
-    #print(db.find(q.type == 'apple'))
-    #db.add({'type': 'apple', 'count': 7})
-
-    #db.columnsDistinct(q.type, 'type')
+    db.columnNames()
+'''
+    # print(db.find('type', 'apple'))
+    # print(db.find(q.type == 'apple'))
+    # db.add({'type': 'apple', 'count': 7})
+    # print(db.columnsDistinct('type'))
