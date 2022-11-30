@@ -1,21 +1,50 @@
-from PyQt6 import QtCore, QtGui, QtWidgets
+import itertools
+
+from PyQt6 import QtCore, QtGui, QtWidgets, QtPrintSupport
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtGui import QPalette, QColor
 from PyQt6 import uic
 # Only needed for access to command line arguments
 import sys
 # Only to access database
-from tinydb import TinyDB, Query
+from tinydb import TinyDB, Query, where
+import sqlite3
+from sqlite3 import Error
+from itertools import zip_longest
 
-class list(QWidget):
+class Row:
+    def __init__(self, cols, data):
+        self.row = []
+        for i in cols:
+            try:
+                self.row.append(data[i])
+            except KeyError:
+                self.row.append("-")
+                # self.row.append(QtWidgets.QCheckBox())
 
-    def __init__(self, color):
-        super().__init__()
-        self.setAutoFillBackground(True)
+class ColList(QWidget):
+    """lmlml"""
+    def __init__(self, col, parent=None):
+        super().__init__(parent)
+        # Load the GUI
+        uic.loadUi("Listwidget.ui", self)
+        self.title = col
+        self.groupBox.setTitle(col)
+        self.listWidget.setSortingEnabled(True)
+        self.listWidget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.ButtonClear.clicked.connect(self.clearSel)
 
-        palette = self.palette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(color))
-        self.setPalette(palette)
+    def loadlist(self, x):
+        self.listWidget.addItems([str(i) for i in x])
+        # self.listWidget.setMinimumWidth(self.listWidget.sizeHintForColumn(0))
+
+    def clearSel(self):
+        self.listWidget.clearSelection()
+    def SelectedItems(self):
+        return ([item.text() for item in self.listWidget.selectedItems()])
+    def SC(self):
+        print("hi")
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
