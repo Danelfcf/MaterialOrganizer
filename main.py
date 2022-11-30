@@ -49,15 +49,67 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         uic.loadUi("MainWindow.ui", self)
+        self.scrollFilters.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        self.TagsH.addWidget(list('red'))
-        self.TagsH.addWidget(list('red'))
-        self.TagsH.addWidget(list('red'))
-        self.TagsH.addWidget(list('red'))
-        self.TagsH.addWidget(list('red'))
-        self.TagsH.addWidget(list('red'))
+        #ExcersicesTab
+        self.ButtonClearAll.clicked.connect(self.clearAllSelected)
+        self.ButtonApply.clicked.connect(self.applyFilters)
 
-class Database():
+        #Selectedtab
+        self.ButtonPrint.clicked.connect(self.Print)
+
+        # trying to enable drag and drop
+        self.tableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.tableWidget.setDragEnabled(True)
+        self.tableWidget.viewport().setAcceptDrops(True)
+        self.tableWidget.setDropIndicatorShown(True)
+        self.tableWidget.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.InternalMove)
+
+        self.db = False
+        self.baseCol = ['Option_1', 'ID']
+        self.columns = False
+        self.loadedData = False
+        self.DataDepth = 10
+
+        self.update()
+
+    def dbLink(self, x):
+        self.db = x
+        self.columns = self.db.columnNames()
+        self.tableWidget.setColumnCount(len(self.columns + self.baseCol))
+        self.tableWidget.setHorizontalHeaderLabels(self.baseCol + self.columns)
+        self.loadData()
+
+    def loadTags(self):
+        for i in self.columns:
+            self.TagsH.insertWidget(self.TagsH.count() - 1, ColList(f"{i}", parent=self))
+            self.TagsH.itemAt(self.TagsH.count() - 2).widget().loadlist(self.db.columnsDistinct(i))
+
+    def applyFilters(self):
+        for widget in self.scrollFilters.findChildren(ColList):
+            widget.SelectedItems()
+
+    def loadData(self):
+        self.loadedData = []
+        a = self.db.readAll()
+        for i in a:
+            self.loadedData.append(Row(self.baseCol + self.columns, i).row)
+        for i in range(len(self.loadedData)):
+            self.tableWidget.insertRow(i)
+            for j in range(len(self.loadedData[i])):
+                self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(self.loadedData[i][j])))
+        # self.tableWidget.setModal(Table)
+
+    def clearAllSelected(self):
+        for widget in self.scrollFilters.findChildren(ColList):
+            widget.clearSel()
+    def Print(self):
+        printer = QtPrintSupport.QPrinter()
+        printDialog = QtPrintSupport.QPrintDialog()
+        if printDialog.exec() == QtPrintSupport.QPrintDialog.accepted:
+            self.handle_paint_request(printer)
+
+
     def __init__(self):
         self.db = TinyDB('testdb.json')
         self.q = Query()
