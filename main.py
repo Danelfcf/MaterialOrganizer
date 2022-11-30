@@ -110,6 +110,98 @@ class MainWindow(QtWidgets.QMainWindow):
             self.handle_paint_request(printer)
 
 
+class DatabaseSQLite:
+
+    def __init__(self):
+        self.dbPath = False
+        self.Create()
+
+    def Create(self, path='', name="database.db"):
+        """
+        Connects to a database in path, default is active file, named database.db. If
+        Database does not exist it will be created
+        :param path: (str) database folder's path, must be set according to OS
+        :param name: (str) database name
+        :return: True if database connection is valid
+                 str if database connection Failed
+        """
+        try:
+            db = sqlite3.connect(path+name)
+            print(sqlite3.version)
+        except Error as e:
+            return e
+        finally:
+            if db:
+                db.close()
+                self.dbPath= path + name
+                return True
+
+    def RunCommand(self, c, inputString):
+        try:
+            print(inputString)
+            return c.execute(inputString)
+        except Error as e:
+            return e
+    def Connect(self, command, *args, **kwargs):
+        """
+        Input function, args and kwargs.
+        print(db.Connect(db.RunCommand, sql_create_tasks_table))
+        :param command: function
+        :param args: passed function's arguments
+        :param kwargs: passed function's keyword arguments
+        :return: passed functions return or Error String
+        """
+        db = sqlite3.connect(self.dbPath)
+        curser = db.cursor()
+        rt=True
+        try:
+            rt = command(curser, *args, **kwargs).fetchall()
+        except Error as e:
+            return e
+        finally:
+            if db:
+                db.close()
+                return rt
+
+    def CreateTable(self, c, table, Cols=[], types=[], adds=[]):
+        """
+
+        :param table:
+        :param Cols:
+        :param types:
+        :param adds:
+        """
+        if(isinstance(table, str)) & \
+          (isinstance(Cols, list)) & \
+          (isinstance(types, list)) & \
+          (isinstance(adds, list)):
+            cmdstr=f'CREATE TABLE IF NOT EXISTS {table}(\n'
+            for name, typ, add in list(itertools.zip_longest(Cols, types, adds, fillvalue="")):
+                cmdstr += f'{name} {typ} {add},\n'
+            cmdstr = cmdstr[:-2]+");"
+
+            return self.RunCommand(c, cmdstr)
+
+        else:
+            return False
+
+    def add(self, table, data={}):
+        part1= f"INSERT INTO {table}("
+        part2= f"VALUES("
+        for col, val in zip(data.keys(), data.values()):
+            part1 += f"'{col}', "
+            part2 += f"'{val}', "
+
+        cmdstr = part1[:-2]+") " + part2[:-2]+");"
+        return self.Connect(self.RunCommand, cmdstr)
+
+    def columnNames(self, table="Material"):
+        a = db.Connect(self.RunCommand, f"select name from pragma_table_info('{table}')")
+        return list(map(lambda x: x[0], a))
+
+
+
+
 class DatabaseTinyDB:
 
     def __init__(self):
