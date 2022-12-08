@@ -1,25 +1,22 @@
 import itertools
-
-from PyQt6 import QtCore, QtGui, QtWidgets, QtPrintSupport
-from PyQt6.QtWidgets import QWidget
-from PyQt6.QtGui import QPalette, QColor
-from PyQt6 import uic
+# Only to access database
+import sqlite3
 # Only needed for access to command line arguments
 import sys
-# Only to access database
-from tinydb import TinyDB, Query, where
-import sqlite3
 from sqlite3 import Error
-from itertools import zip_longest
+
+from PyQt6 import QtCore, QtWidgets, QtPrintSupport
+from PyQt6 import uic
+from PyQt6.QtWidgets import QWidget
 
 
 class Row:
 
     def __init__(self, cols, data):
         self.row = []
-        for i in cols:
+        for i in data:
             try:
-                self.row.append(data[i])
+                self.row.append(i)
             except KeyError:
                 self.row.append("-")
                 # self.row.append(QtWidgets.QCheckBox())
@@ -73,7 +70,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tableWidget.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.InternalMove)
 
         self.db = False
-        self.baseCol = ['Option_1', 'ID']
+        self.baseCol = []
         self.columns = False
         self.loadedData = False
         self.DataDepth = 10
@@ -90,7 +87,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def loadTags(self):
         for i in self.columns:
             self.TagsH.insertWidget(self.TagsH.count() - 1, ColList(f"{i}", parent=self))
-            self.TagsH.itemAt(self.TagsH.count() - 2).widget().loadlist(self.db.columnsDistinct(i))
+            print("Value for i:", i)
+            self.TagsH.itemAt(self.TagsH.count() - 2).widget().loadlist(self.db.columnsDistinct(col=i))
 
     def applyFilters(self):
         for widget in self.scrollFilters.findChildren(ColList):
@@ -144,17 +142,19 @@ class DatabaseSQLite:
                 self.dbPath = path + name
                 return True
 
-    def RunCommand(self, c, inputString):
+    @staticmethod
+    def RunCommand(c, inputs):
+        c.execute(inputs)
         try:
-            print(inputString)
-            return c.execute(inputString)
+            return 1
         except Error as e:
             return e
 
-    def Connect(self, command, *args, **kwargs):
+    def Connect(self, command, *args, save=False, **kwargs):
         """
         Input function, args and kwargs.
         print(db.Connect(db.RunCommand, sql_create_tasks_table))
+        :param save:
         :param command: function
         :param args: passed function's arguments
         :param kwargs: passed function's keyword arguments
@@ -163,8 +163,14 @@ class DatabaseSQLite:
         db = sqlite3.connect(self.dbPath)
         curser = db.cursor()
         rt = True
+
         try:
-            rt = command(curser, *args, **kwargs).fetchall()
+            if callable(command):
+                rt = command(curser, *args, **kwargs)
+                rt = curser.fetchall()
+                if save:
+                    db.commit()
+
         except Error as e:
             return e
         finally:
@@ -172,20 +178,21 @@ class DatabaseSQLite:
                 db.close()
                 return rt
 
-    def CreateTable(self, c, table, Cols=[], types=[], adds=[]):
+    def CreateTable(self, c, table, cols=[], types=[], adds=[]):
         """
 
+        :param c:
         :param table:
-        :param Cols:
+        :param cols:
         :param types:
         :param adds:
         """
         if (isinstance(table, str)) & \
-                (isinstance(Cols, list)) & \
+                (isinstance(cols, list)) & \
                 (isinstance(types, list)) & \
                 (isinstance(adds, list)):
             cmdstr = f'CREATE TABLE IF NOT EXISTS {table}(\n'
-            for name, typ, add in list(itertools.zip_longest(Cols, types, adds, fillvalue="")):
+            for name, typ, add in list(itertools.zip_longest(cols, types, adds, fillvalue="")):
                 cmdstr += f'{name} {typ} {add},\n'
             cmdstr = cmdstr[:-2] + ");"
 
@@ -202,29 +209,36 @@ class DatabaseSQLite:
             part2 += f"'{val}', "
 
         cmdstr = part1[:-2] + ") " + part2[:-2] + ");"
-        return self.Connect(self.RunCommand, cmdstr)
+        return self.Connect(self.RunCommand, cmdstr, save=True)
+
+    def readAll(self, table='Material'):
+        return self.Connect(self.RunCommand, f"SELECT * FROM {table}")
 
     def columnNames(self, table="Material"):
         a = db.Connect(self.RunCommand, f"select name from pragma_table_info('{table}')")
         return list(map(lambda x: x[0], a))
 
+    def columnsDistinct(self, col="", table="Material"):
+        Return = self.Connect(self.RunCommand, f"SELECT DISTINCT  {col} FROM {table}")
+        return [item for sublist in Return for item in sublist]
+
 
 if __name__ == '__main__':
     db = DatabaseSQLite()
-    # print(db.columnNames())
-    print(db.add("Material", {"id": 1,
+    """
+    print(db.columnNames())
+    print(db.add("Material", {"id": 2,
                               "hyperlink": "www.google.com",
                               "level": "C2",
                               "subject": "simple Present"}))
-
-    """
+    print(db.readAll("Material"))
+    print(db.columnsDistinct("Material", "id"))
     print(db.Connect(db.CreateTable, "Material",
                    ["id", 'hyperlink', 'level', 'subject'],
                    ["integer", 'text', 'text', 'text'],
                    ["NOT NULL"]))
-"""
-
-    '''
+    """
+    print("Distinct Cols", db.columnsDistinct("id", "Material"))
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.dbLink(db)
@@ -232,7 +246,7 @@ if __name__ == '__main__':
     window.show()
     app.exec()
     db.columnNames()
-'''
+
     # print(db.find('type', 'apple'))
     # print(db.find(q.type == 'apple'))
     # db.add({'type': 'apple', 'count': 7})
