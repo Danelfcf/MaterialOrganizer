@@ -28,17 +28,6 @@ class DatabaseTinyDB:
         '''
         return self.db.all()
 
-    def find(self, field, x):
-        '''
-        Example usage: print(db.find(['type'], ['apple']))
-        :param field: (str) database 'column' to be searched for
-        :param x: (str) value looked for
-        :return: list[dic{}]
-        '''
-        # return self.db.search(self.q[tuple(field)].one_of(x))
-        print(self.db.search(self.q[tuple(field)].one_of(field)))
-        return []  # self.db.search(self.db.table('_default').all())
-
     def columnsDistinct(self, x):
         '''
         Must be changed, as db gets bigger this will slow down like hell. does not take nested lists into account!!
@@ -52,6 +41,17 @@ class DatabaseTinyDB:
             if i.get(x) not in values:
                 values.append(i.get(x))
         return values
+
+    def find(self, field, x):
+        '''
+        Example usage: print(db.find(['type'], ['apple']))
+        :param field: (str) database 'column' to be searched for
+        :param x: (str) value looked for
+        :return: list[dic{}]
+        '''
+        # return self.db.search(self.q[tuple(field)].one_of(x))
+        print(self.db.search(self.q[tuple(field)].one_of(field)))
+        return []  # self.db.search(self.db.table('_default').all())
 
     def columnNames(self):
         values = []
