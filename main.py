@@ -11,19 +11,28 @@ from PyQt6.QtWidgets import QWidget
 
 
 class Row:
+    """
+    Build list of items to be placed in table.
 
+    This will be changed into a pyqt widget
+    """
     def __init__(self, cols, data):
         self.row = []
-        for i in data:
+        for d, c in zip(data, cols):
             try:
-                self.row.append(i)
+                if d == "hyperlink":
+                    self.row.append(d)
+                else:
+                    self.row.append(d)
             except KeyError:
                 self.row.append("-")
                 # self.row.append(QtWidgets.QCheckBox())
 
 
 class ColList(QWidget):
-    """lmlml"""
+    """
+    Pyqt widget for listing selectable strings within a list
+    """
 
     def __init__(self, col, parent=None):
         super().__init__(parent)
@@ -36,20 +45,37 @@ class ColList(QWidget):
         self.ButtonClear.clicked.connect(self.clearSel)
 
     def loadlist(self, x):
+        """
+
+        :param x:
+        """
         self.listWidget.addItems([str(i) for i in x])
         # self.listWidget.setMinimumWidth(self.listWidget.sizeHintForColumn(0))
 
     def clearSel(self):
+        """
+
+        """
         self.listWidget.clearSelection()
 
     def SelectedItems(self):
+        """
+
+        :return:
+        """
         return ([item.text() for item in self.listWidget.selectedItems()])
 
     def SC(self):
+        """
+
+        """
         print("hi")
 
 
 class MainWindow(QtWidgets.QMainWindow):
+    """
+    Main application
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         uic.loadUi("MainWindow.ui", self)
@@ -78,6 +104,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update()
 
     def dbLink(self, x):
+        """
+        Receives a Database class for program to access and control
+        :param x: Database class
+        """
         self.db = x
         self.columns = self.db.columnNames()
         self.tableWidget.setColumnCount(len(self.columns + self.baseCol))
@@ -85,16 +115,33 @@ class MainWindow(QtWidgets.QMainWindow):
         self.loadData()
 
     def loadTags(self):
+        """
+        Creates a ColList widget for every column within the database and places
+        every distinct value from each column to its corresponding widget. ie:
+
+        id | name | date
+        1  |  bob | 1990
+
+        creates 3 widgets,
+            one for id containing 1,
+            one for name containing 'bob' and
+            the third for date containing 1990
+        """
         for i in self.columns:
             self.TagsH.insertWidget(self.TagsH.count() - 1, ColList(f"{i}", parent=self))
-            print("Value for i:", i)
             self.TagsH.itemAt(self.TagsH.count() - 2).widget().loadlist(self.db.columnsDistinct(col=i))
 
     def applyFilters(self):
+        """
+        Gets the selected values in each colList widget and filters out every item not containing these values
+        """
         for widget in self.scrollFilters.findChildren(ColList):
             widget.SelectedItems()
 
     def loadData(self):
+        """
+        Places selected data from the database into a QTableWidget
+        """
         self.loadedData = []
         a = self.db.readAll()
         for i in a:
@@ -102,14 +149,21 @@ class MainWindow(QtWidgets.QMainWindow):
         for i in range(len(self.loadedData)):
             self.tableWidget.insertRow(i)
             for j in range(len(self.loadedData[i])):
-                self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(self.loadedData[i][j])))
+                row = QtWidgets.QTableWidgetItem(str(self.loadedData[i][j]))
+                self.tableWidget.setItem(i, j, row)
         # self.tableWidget.setModal(Table)
 
     def clearAllSelected(self):
+        """
+        Clears the selection to all ColList widgets
+        """
         for widget in self.scrollFilters.findChildren(ColList):
             widget.clearSel()
 
     def Print(self):
+        """
+        Opens print dialog
+        """
         printer = QtPrintSupport.QPrinter()
         printDialog = QtPrintSupport.QPrintDialog()
         if printDialog.exec() == QtPrintSupport.QPrintDialog.accepted:
@@ -117,7 +171,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 class DatabaseSQLite:
-
+    """
+    SQL implementation for Python. contains The following classes:
+    Create, creates a database if one isn't present;
+    Connect, opens database and runs function and arguments passed to it;
+    CreateTable, creates a table in a given database;
+    add, adds data to a table;
+    readAll, (not recommended) returns tuple with all rows within the database;
+    columnNames, returns list of columns within a table;
+    columnsDistinct, gets distinct values for row in table.
+    find, to do
+    """
     def __init__(self):
         self.dbPath = False
         self.Create()
@@ -144,6 +208,12 @@ class DatabaseSQLite:
 
     @staticmethod
     def RunCommand(c, inputs):
+        """
+
+        :param c: SQLite curser
+        :param inputs: SQL command
+        :return: bool, depending if error found
+        """
         c.execute(inputs)
         try:
             return 1
@@ -159,6 +229,9 @@ class DatabaseSQLite:
         :param args: passed function's arguments
         :param kwargs: passed function's keyword arguments
         :return: passed functions return or Error String
+
+        example:
+        Connect(self.RunCommand, SQL_command_string, save=True)
         """
         db = sqlite3.connect(self.dbPath)
         curser = db.cursor()
@@ -181,11 +254,19 @@ class DatabaseSQLite:
     def CreateTable(self, c, table, cols=[], types=[], adds=[]):
         """
 
-        :param c:
-        :param table:
-        :param cols:
-        :param types:
-        :param adds:
+        Creates and sets up a table.
+
+        :param c: SQLite curser
+        :param table: (str) Name for the table
+        :param cols: list(str) for name of columns
+        :param types: list(str) informs SQL data type for columns
+        :param adds: additional parameters
+
+        example:
+        print(db.Connect(db.CreateTable, "Material",
+                   ["id", 'hyperlink', 'level', 'subject'],
+                   ["integer", 'text', 'text', 'text'],
+                   ["NOT NULL"]))
         """
         if (isinstance(table, str)) & \
                 (isinstance(cols, list)) & \
@@ -202,6 +283,18 @@ class DatabaseSQLite:
             return False
 
     def add(self, table, data={}):
+        """
+        Adds a row of data to database. All data must be in a dictionary
+        :param table: (str) name of table
+        :param data: (dict) dictionary with column_name : value
+        :return: bool or error string
+
+        example:
+        db.add("Material", {"id": 2,
+                              "hyperlink": "www.google.com",
+                              "level": "C2",
+                              "subject": "simple Present"})
+        """
         part1 = f"INSERT INTO {table}("
         part2 = f"VALUES("
         for col, val in zip(data.keys(), data.values()):
@@ -212,33 +305,47 @@ class DatabaseSQLite:
         return self.Connect(self.RunCommand, cmdstr, save=True)
 
     def readAll(self, table='Material'):
+        """
+
+        :param table: (str) table name
+        :return: tuple of row in table
+
+        example:
+        db.readAll("Material")
+        """
         return self.Connect(self.RunCommand, f"SELECT * FROM {table}")
 
     def columnNames(self, table="Material"):
+        """
+
+        :param table: (str) table name
+        :return: list(str)
+
+        example:
+        print(db.columnNames())
+        """
         a = db.Connect(self.RunCommand, f"select name from pragma_table_info('{table}')")
         return list(map(lambda x: x[0], a))
 
     def columnsDistinct(self, col="", table="Material"):
+        """
+
+        :param col: (str) column name
+        :param table: (str) table name
+        :return: tuple of (str)
+
+        example:
+        db.columnsDistinct("Material", "id")
+        """
         Return = self.Connect(self.RunCommand, f"SELECT DISTINCT  {col} FROM {table}")
         return [item for sublist in Return for item in sublist]
 
 
 if __name__ == '__main__':
     db = DatabaseSQLite()
-    """
-    print(db.columnNames())
-    print(db.add("Material", {"id": 2,
-                              "hyperlink": "www.google.com",
-                              "level": "C2",
-                              "subject": "simple Present"}))
-    print(db.readAll("Material"))
-    print(db.columnsDistinct("Material", "id"))
-    print(db.Connect(db.CreateTable, "Material",
-                   ["id", 'hyperlink', 'level', 'subject'],
-                   ["integer", 'text', 'text', 'text'],
-                   ["NOT NULL"]))
-    """
-    print("Distinct Cols", db.columnsDistinct("id", "Material"))
+
+
+    # print("Distinct Cols", db.columnsDistinct("id", "Material"))
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.dbLink(db)
