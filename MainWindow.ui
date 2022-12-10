@@ -71,8 +71,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>628</width>
-                <height>180</height>
+                <width>616</width>
+                <height>166</height>
                </rect>
               </property>
               <property name="layoutDirection">
@@ -128,6 +128,19 @@
                 </size>
                </property>
               </spacer>
+             </item>
+             <item>
+              <widget class="QPushButton" name="ButtonRefresh">
+               <property name="text">
+                <string>Refresh</string>
+               </property>
+               <property name="default">
+                <bool>false</bool>
+               </property>
+               <property name="flat">
+                <bool>false</bool>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>
@@ -226,7 +239,7 @@
      <x>0</x>
      <y>0</y>
      <width>692</width>
-     <height>22</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuPlaceHolder">
