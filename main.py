@@ -337,8 +337,35 @@ class DatabaseSQLite:
         example:
         db.columnsDistinct("Material", "id")
         """
-        Return = self.Connect(self.RunCommand, f"SELECT DISTINCT  {col} FROM {table}")
-        return [item for sublist in Return for item in sublist]
+        result = self.Connect(self.RunCommand, f"SELECT DISTINCT  {col} FROM {table}")
+        return [item for sublist in result for item in sublist]
+
+    def find(self, values, table=None, selection='*', operation='AND'):
+        """
+        Find rows with multiple values and or columns
+
+        :param values: Dict{column: list(Values)}
+        :param table: table in SQL database
+        :param operation: SQL operation (AND, OR, ...) for columns
+        :param selection: SQL select statement
+
+        Example:
+        db.find(values={'Column_1': [1, 2, 3], 'Column_2': ["C2"]})
+        SQLite command:
+        SELECT * FROM TABLE_NAME WHERE Column_1 IN (?, ?, ?) AND Column_2 IN (?)
+        """
+        if table is None:
+            table = self.defaultTable
+
+        if isinstance(values, dict):
+            condition = ''
+            for keys in values.keys():
+                val = ', '.join("?" for value in values[keys])
+                condition += f"{keys} IN ({val}) {operation} "
+            query = f'SELECT {selection} FROM {table} WHERE %s' % condition[:-4]
+            result = self.Connect(self.RunCommand, query,
+                                  *[item for sublist in list(values.values()) for item in sublist])
+            return result
 
 
 if __name__ == '__main__':
