@@ -103,8 +103,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tableWidget.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.InternalMove)
 
         self.db = False
-        self.baseCol = []
-        self.columns = False
+        self.columns = None
         self.loadedData = False
         self.DataDepth = 10
 
@@ -117,8 +116,8 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         self.db = x
         self.columns = self.db.columnNames()
-        self.tableWidget.setColumnCount(len(self.columns + self.baseCol))
-        self.tableWidget.setHorizontalHeaderLabels(self.baseCol + self.columns)
+        self.tableWidget.setColumnCount(len(self.columns))
+        self.tableWidget.setHorizontalHeaderLabels(self.columns)
         self.loadData()
 
     def loadTags(self):
@@ -153,7 +152,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.loadedData = []
         a = self.db.readAll()
         for i in a:
-            self.loadedData.append(Row(self.baseCol + self.columns, i).row)
+            self.loadedData.append(Row(self.columns, i).row)
         for i in range(len(self.loadedData)):
             self.tableWidget.insertRow(i)
             for j in range(len(self.loadedData[i])):
@@ -197,7 +196,6 @@ class DatabaseSQLite:
         self.dbPath = False
         self.Create()
 
-    # noinspection PyUnboundLocalVariable
     def Create(self, path='', name=None):
         """
         Connects to a database in path, default is active file, named database.db. If
@@ -214,13 +212,12 @@ class DatabaseSQLite:
         try:
             database = sqlite3.connect(path + name)
             print(sqlite3.version)
-        except Error as e:
-            return e
-        finally:
             if database:
                 database.close()
                 self.dbPath = path + name
                 return True
+        except Error as e:
+            return e
 
     @staticmethod
     def RunCommand(c, inputs, *args):
