@@ -1,3 +1,7 @@
+"""
+main for GUI project
+"""
+
 import itertools
 # Only to access database
 import sqlite3
@@ -16,6 +20,7 @@ class Row:
 
     This will be changed into a pyqt widget
     """
+
     def __init__(self, cols, data):
         self.row = []
         for d, c in zip(data, cols):
@@ -44,9 +49,9 @@ class ColList(QWidget):
         self.listWidget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.ButtonClear.clicked.connect(self.clearSel)
 
-    def loadlist(self, x):
+    def loadList(self, x):
         """
-
+        Gets all the items to be added to the list and places them in listWidget
         :param x:
         """
         self.listWidget.addItems([str(i) for i in x])
@@ -54,7 +59,7 @@ class ColList(QWidget):
 
     def clearSel(self):
         """
-
+        Clears selected items in listWidget
         """
         self.listWidget.clearSelection()
 
@@ -63,11 +68,12 @@ class ColList(QWidget):
 
         :return:
         """
-        return ([item.text() for item in self.listWidget.selectedItems()])
+        return [item.text() for item in self.listWidget.selectedItems()]
 
-    def SC(self):
+    @staticmethod
+    def SC():
         """
-
+        Sanity check
         """
         print("hi")
 
@@ -76,16 +82,17 @@ class MainWindow(QtWidgets.QMainWindow):
     """
     Main application
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         uic.loadUi("MainWindow.ui", self)
         self.scrollFilters.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        # ExcersicesTab
+        # Exercises_Tab
         self.ButtonClearAll.clicked.connect(self.clearAllSelected)
         self.ButtonApply.clicked.connect(self.applyFilters)
 
-        # Selectedtab
+        # Selected_tab
         self.ButtonPrint.clicked.connect(self.Print)
 
         # trying to enable drag and drop
@@ -127,9 +134,10 @@ class MainWindow(QtWidgets.QMainWindow):
             one for name containing 'bob' and
             the third for date containing 1990
         """
-        for i in self.columns:
-            self.TagsH.insertWidget(self.TagsH.count() - 1, ColList(f"{i}", parent=self))
-            self.TagsH.itemAt(self.TagsH.count() - 2).widget().loadlist(self.db.columnsDistinct(col=i))
+        if self.columns:
+            for i in self.columns:
+                self.TagsH.insertWidget(self.TagsH.count() - 1, ColList(f"{i}", parent=self))
+                self.TagsH.itemAt(self.TagsH.count() - 2).widget().loadList(self.db.columnsDistinct(col=i))
 
     def applyFilters(self):
         """
@@ -165,8 +173,8 @@ class MainWindow(QtWidgets.QMainWindow):
         Opens print dialog
         """
         printer = QtPrintSupport.QPrinter()
-        printDialog = QtPrintSupport.QPrintDialog()
-        if printDialog.exec() == QtPrintSupport.QPrintDialog.accepted:
+        print_dialog = QtPrintSupport.QPrintDialog()
+        if print_dialog.exec() == QtPrintSupport.QPrintDialog.accepted:
             self.handle_paint_request(printer)
 
 
@@ -182,10 +190,14 @@ class DatabaseSQLite:
     columnsDistinct, gets distinct values for row in table.
     find, to do
     """
+
     def __init__(self):
+        self.defaultDBName = "database.db"
+        self.defaultTable = "Material"
         self.dbPath = False
         self.Create()
 
+    # noinspection PyUnboundLocalVariable
     def Create(self, path='', name="database.db"):
         """
         Connects to a database in path, default is active file, named database.db. If
@@ -195,26 +207,31 @@ class DatabaseSQLite:
         :return: True if database connection is valid
                  str if database connection Failed
         """
+
+        if name is None:
+            name = self.defaultDBName
+
         try:
-            db = sqlite3.connect(path + name)
+            database = sqlite3.connect(path + name)
             print(sqlite3.version)
         except Error as e:
             return e
         finally:
-            if db:
-                db.close()
+            if database:
+                database.close()
                 self.dbPath = path + name
                 return True
 
     @staticmethod
-    def RunCommand(c, inputs):
+    def RunCommand(c, inputs, *args):
         """
 
         :param c: SQLite curser
         :param inputs: SQL command
         :return: bool, depending if error found
         """
-        c.execute(inputs)
+
+        c.execute(inputs, args)
         try:
             return 1
         except Error as e:
@@ -224,6 +241,7 @@ class DatabaseSQLite:
         """
         Input function, args and kwargs.
         print(db.Connect(db.RunCommand, sql_create_tasks_table))
+
         :param save:
         :param command: function
         :param args: passed function's arguments
@@ -233,25 +251,24 @@ class DatabaseSQLite:
         example:
         Connect(self.RunCommand, SQL_command_string, save=True)
         """
-        db = sqlite3.connect(self.dbPath)
-        curser = db.cursor()
-        rt = True
+        if isinstance(self.dbPath, str):
+            try:
+                database = sqlite3.connect(self.dbPath)
+                curser = database.cursor()
+                rt = True
+                if callable(command):
+                    command(curser, *args, **kwargs)
+                    rt = curser.fetchall()
+                    if save:
+                        database.commit()
+                if database:
+                    database.close()
+                    return rt
 
-        try:
-            if callable(command):
-                rt = command(curser, *args, **kwargs)
-                rt = curser.fetchall()
-                if save:
-                    db.commit()
+            except Error as e:
+                return e
 
-        except Error as e:
-            return e
-        finally:
-            if db:
-                db.close()
-                return rt
-
-    def CreateTable(self, c, table, cols=[], types=[], adds=[]):
+    def CreateTable(self, c, table, cols=None, types=None, adds=None):
         """
 
         Creates and sets up a table.
@@ -272,17 +289,17 @@ class DatabaseSQLite:
                 (isinstance(cols, list)) & \
                 (isinstance(types, list)) & \
                 (isinstance(adds, list)):
-            cmdstr = f'CREATE TABLE IF NOT EXISTS {table}(\n'
+            command_string = f'CREATE TABLE IF NOT EXISTS {table}(\n'
             for name, typ, add in list(itertools.zip_longest(cols, types, adds, fillvalue="")):
-                cmdstr += f'{name} {typ} {add},\n'
-            cmdstr = cmdstr[:-2] + ");"
+                command_string += f'{name} {typ} {add},\n'
+            command_string = command_string[:-2] + ");"
 
-            return self.RunCommand(c, cmdstr)
+            return self.RunCommand(c, command_string)
 
         else:
             return False
 
-    def add(self, table, data={}):
+    def add(self, table, data=None):
         """
         Adds a row of data to database. All data must be in a dictionary
         :param table: (str) name of table
@@ -295,14 +312,15 @@ class DatabaseSQLite:
                               "level": "C2",
                               "subject": "simple Present"})
         """
-        part1 = f"INSERT INTO {table}("
-        part2 = f"VALUES("
-        for col, val in zip(data.keys(), data.values()):
-            part1 += f"'{col}', "
-            part2 += f"'{val}', "
+        if data:
+            part1 = f"INSERT INTO {table}("
+            part2 = f"VALUES("
+            for col, val in zip(data.keys(), data.values()):
+                part1 += f"'{col}', "
+                part2 += f"'{val}', "
 
-        cmdstr = part1[:-2] + ") " + part2[:-2] + ");"
-        return self.Connect(self.RunCommand, cmdstr, save=True)
+            command_string = part1[:-2] + ") " + part2[:-2] + ");"
+            return self.Connect(self.RunCommand, command_string, save=True)
 
     def readAll(self, table='Material'):
         """
@@ -370,9 +388,9 @@ class DatabaseSQLite:
 
 if __name__ == '__main__':
     db = DatabaseSQLite()
+    db.find(values={'id': [1, 2, 3], 'level': ["C2"]})
 
 
-    # print("Distinct Cols", db.columnsDistinct("id", "Material"))
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.dbLink(db)
@@ -381,7 +399,3 @@ if __name__ == '__main__':
     app.exec()
     db.columnNames()
 
-    # print(db.find('type', 'apple'))
-    # print(db.find(q.type == 'apple'))
-    # db.add({'type': 'apple', 'count': 7})
-    # print(db.columnsDistinct('type'))
