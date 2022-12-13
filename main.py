@@ -198,7 +198,7 @@ class DatabaseSQLite:
         self.Create()
 
     # noinspection PyUnboundLocalVariable
-    def Create(self, path='', name="database.db"):
+    def Create(self, path='', name=None):
         """
         Connects to a database in path, default is active file, named database.db. If
         Database does not exist it will be created
@@ -268,7 +268,7 @@ class DatabaseSQLite:
             except Error as e:
                 return e
 
-    def CreateTable(self, c, table, cols=None, types=None, adds=None):
+    def CreateTable(self, c, table=None, cols=None, types=None, adds=None):
         """
 
         Creates and sets up a table.
@@ -285,8 +285,10 @@ class DatabaseSQLite:
                    ["integer", 'text', 'text', 'text'],
                    ["NOT NULL"]))
         """
-        if (isinstance(table, str)) & \
-                (isinstance(cols, list)) & \
+        if table is None:
+            table = self.defaultTable
+
+        if (isinstance(cols, list)) & \
                 (isinstance(types, list)) & \
                 (isinstance(adds, list)):
             command_string = f'CREATE TABLE IF NOT EXISTS {table}(\n'
@@ -299,7 +301,7 @@ class DatabaseSQLite:
         else:
             return False
 
-    def add(self, table, data=None):
+    def add(self, table=None, data=None):
         """
         Adds a row of data to database. All data must be in a dictionary
         :param table: (str) name of table
@@ -312,6 +314,9 @@ class DatabaseSQLite:
                               "level": "C2",
                               "subject": "simple Present"})
         """
+        if table is None:
+            table = self.defaultTable
+
         if data:
             part1 = f"INSERT INTO {table}("
             part2 = f"VALUES("
@@ -322,7 +327,7 @@ class DatabaseSQLite:
             command_string = part1[:-2] + ") " + part2[:-2] + ");"
             return self.Connect(self.RunCommand, command_string, save=True)
 
-    def readAll(self, table='Material'):
+    def readAll(self, table=None):
         """
 
         :param table: (str) table name
@@ -331,21 +336,25 @@ class DatabaseSQLite:
         example:
         db.readAll("Material")
         """
+        if table is None:
+            table = self.defaultTable
         return self.Connect(self.RunCommand, f"SELECT * FROM {table}")
 
-    def columnNames(self, table="Material"):
+    def columnNames(self, table=None):
         """
-
+        Gets the name for each column in table
         :param table: (str) table name
         :return: list(str)
 
         example:
         print(db.columnNames())
         """
+        if table is None:
+            table = self.defaultTable
         a = db.Connect(self.RunCommand, f"select name from pragma_table_info('{table}')")
         return list(map(lambda x: x[0], a))
 
-    def columnsDistinct(self, col="", table="Material"):
+    def columnsDistinct(self, col="", table=None):
         """
 
         :param col: (str) column name
@@ -355,6 +364,9 @@ class DatabaseSQLite:
         example:
         db.columnsDistinct("Material", "id")
         """
+        if table is None:
+            table = self.defaultTable
+
         result = self.Connect(self.RunCommand, f"SELECT DISTINCT  {col} FROM {table}")
         return [item for sublist in result for item in sublist]
 
@@ -389,7 +401,6 @@ class DatabaseSQLite:
 if __name__ == '__main__':
     db = DatabaseSQLite()
     db.find(values={'id': [1, 2, 3], 'level': ["C2"]})
-
 
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
