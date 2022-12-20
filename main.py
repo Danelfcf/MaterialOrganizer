@@ -92,6 +92,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ButtonClearAll.clicked.connect(self.clearAllSelected)
         self.ButtonApply.clicked.connect(self.applyFilters)
 
+
         # Selected_tab
         self.ButtonPrint.clicked.connect(self.Print)
 
@@ -138,6 +139,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.TagsH.insertWidget(self.TagsH.count() - 1, ColList(f"{i}", parent=self))
                 self.TagsH.itemAt(self.TagsH.count() - 2).widget().loadList(self.db.columnsDistinct(col=i))
 
+        self.label_numbe_of_elements.setText(f"Items: {self.db.find(count=True)[0]}")
+
     def applyFilters(self):
         """
         Gets the selected values in each colList widget and filters out every item not containing these values
@@ -150,7 +153,7 @@ class MainWindow(QtWidgets.QMainWindow):
         Places selected data from the database into a QTableWidget
         """
         self.loadedData = []
-        a = self.db.readAll()
+        a = self.db.readAll(limit=100)
         for i in a:
             self.loadedData.append(Row(self.columns, i).row)
         for i in range(len(self.loadedData)):
@@ -324,10 +327,12 @@ class DatabaseSQLite:
             command_string = part1[:-2] + ") " + part2[:-2] + ");"
             return self.Connect(self.RunCommand, command_string, save=True)
 
-    def readAll(self, table=None):
+    def readAll(self, table=None, limit=None, offset=None):
         """
 
         :param table: (str) table name
+        :param limit: (int) limits the number of results
+        :param offset: (int) offsets the position sql starts listing
         :return: tuple of row in table
 
         example:
@@ -335,7 +340,14 @@ class DatabaseSQLite:
         """
         if table is None:
             table = self.defaultTable
-        return self.Connect(self.RunCommand, f"SELECT * FROM {table}")
+
+        cmd = f"SELECT * FROM {table}"
+
+        if limit:
+            cmd += f" LIMIT {limit}"
+        if offset:
+            cmd += f" OFFSET {offset}"
+        return self.Connect(self.RunCommand, cmd)
 
     def columnNames(self, table=None):
         """
@@ -367,7 +379,7 @@ class DatabaseSQLite:
         result = self.Connect(self.RunCommand, f"SELECT DISTINCT  {col} FROM {table}")
         return [item for sublist in result for item in sublist]
 
-    def find(self, values, table=None, selection='*', operation='AND'):
+    def find(self, values=None, table=None, selection='*', operation='AND', limit=None, offset=None, count=False):
         """
         Find rows with multiple values and or columns
 
@@ -375,6 +387,8 @@ class DatabaseSQLite:
         :param table: table in SQL database
         :param operation: SQL operation (AND, OR, ...) for columns
         :param selection: SQL select statement
+        :param limit: (int) limits the number of results
+        :param offset: (int) offsets the position sql starts listing
 
         Example:
         db.find(values={'Column_1': [1, 2, 3], 'Column_2': ["C2"]})
@@ -383,22 +397,48 @@ class DatabaseSQLite:
         """
         if table is None:
             table = self.defaultTable
+        if values is None:
+            values = {}
 
         if isinstance(values, dict):
             condition = ''
             for keys in values.keys():
                 val = ', '.join("?" for value in values[keys])
                 condition += f"{keys} IN ({val}) {operation} "
-            query = f'SELECT {selection} FROM {table} WHERE %s' % condition[:-4]
+            query = f'SELECT {f"COUNT ({selection})" if count else f"{selection}"} FROM {table} ' \
+                    f'{"WHERE" if values else ""} %s' % condition[:-4]
+
+            if limit:
+                query += f"LIMIT {limit}"
+            if offset and not count:
+                query += f" OFFSET {offset}"
+
             result = self.Connect(self.RunCommand, query,
                                   *[item for sublist in list(values.values()) for item in sublist])
-            return result
+
+            return result[0] if count else result
 
 
 if __name__ == '__main__':
     db = DatabaseSQLite()
-    db.find(values={'id': [1, 2, 3], 'level': ["C2"]})
+    """
+    Generate dummy Data for database
+    a = ["simple present", "Present Continuous", "Simple Past", "Past Continuous", "Present Perfect",
+       "Present Perfect Continuous", "Simple Future"]
+    for i in range(1000):
+        j = db.add("Material", {"id": i,
+                            "hyperlink": "www.google.com",
+                            'level': f'{sample(["A", "B", "C"],1)[0]}{randint(1,2)}',
+                            "subject": f"{sample(a, 1)[0]}"})                        
+    """
 
+    #print(db.readAll())
+    #print(db.find(values={'level': ["C2"]}, limit=10, offset=82))
+    #print(db.find(values={'level': ["C2"]}, limit=10, offset=5, count=True))
+    #print(db.find(limit=10, offset=5, count=True))
+    #print(db.find(count=True))
+
+    #print(db.Connect(db.RunCommand, "select count(*)"))
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.dbLink(db)
