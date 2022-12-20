@@ -145,8 +145,11 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         Gets the selected values in each colList widget and filters out every item not containing these values
         """
+        print("Apply")
+        filters = {}
         for widget in self.scrollFilters.findChildren(ColList):
-            widget.SelectedItems()
+            filters[widget.title] = widget.SelectedItems()
+        print(filters)
 
     def loadData(self):
         """
