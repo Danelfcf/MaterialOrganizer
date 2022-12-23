@@ -145,18 +145,20 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         Gets the selected values in each colList widget and filters out every item not containing these values
         """
-        print("Apply")
         filters = {}
         for widget in self.scrollFilters.findChildren(ColList):
-            filters[widget.title] = widget.SelectedItems()
-        print(filters)
+            if len(widget.SelectedItems()):
+                filters[widget.title] = widget.SelectedItems()
+        self.loadData(values=filters)
 
-    def loadData(self):
+    def loadData(self, values=None):
         """
         Places selected data from the database into a QTableWidget
         """
+        self.tableWidget.clear()
+        self.tableWidget.setRowCount(0)
         self.loadedData = []
-        a = self.db.readAll(limit=100)
+        a = self.db.find(values, limit=100)
         for i in a:
             self.loadedData.append(Row(self.columns, i).row)
         for i in range(len(self.loadedData)):
@@ -182,6 +184,12 @@ class MainWindow(QtWidgets.QMainWindow):
         if print_dialog.exec() == QtPrintSupport.QPrintDialog.accepted:
             self.handle_paint_request(printer)
 
+    @staticmethod
+    def SC():
+        """
+        Sanity check
+        """
+        print("working")
 
 class DatabaseSQLite:
     """
