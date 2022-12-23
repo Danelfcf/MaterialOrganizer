@@ -38,6 +38,7 @@ class ColList(QWidget):
     """
     Pyqt widget for listing selectable strings within a list
     """
+    selection_change = QtCore.pyqtSignal()
 
     def __init__(self, col, parent=None):
         super().__init__(parent)
@@ -47,6 +48,7 @@ class ColList(QWidget):
         self.groupBox.setTitle(col)
         self.listWidget.setSortingEnabled(True)
         self.listWidget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.listWidget.itemSelectionChanged.connect(self.selection_change)
         self.ButtonClear.clicked.connect(self.clearSel)
 
     def loadList(self, x):
@@ -70,6 +72,12 @@ class ColList(QWidget):
         """
         return [item.text() for item in self.listWidget.selectedItems()]
 
+    def UserSelectionChange(self):
+        """
+        custom signal
+        """
+        selection_change.emit()
+
     @staticmethod
     def SC():
         """
@@ -91,7 +99,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Exercises_Tab
         self.ButtonClearAll.clicked.connect(self.clearAllSelected)
         self.ButtonApply.clicked.connect(self.applyFilters)
-
 
         # Selected_tab
         self.ButtonPrint.clicked.connect(self.Print)
@@ -136,8 +143,11 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         if self.columns:
             for i in self.columns:
-                self.TagsH.insertWidget(self.TagsH.count() - 1, ColList(f"{i}", parent=self))
+                column_list = ColList(f"{i}", parent=self)
+                self.TagsH.insertWidget(self.TagsH.count() - 1, column_list)
                 self.TagsH.itemAt(self.TagsH.count() - 2).widget().loadList(self.db.columnsDistinct(col=i))
+                column_list.selection_change.connect(self.SC)
+                # self.ButtonClearAll.clicked.connect(self.clearAllSelected)
 
         self.label_numbe_of_elements.setText(f"Items: {self.db.find(count=True)[0]}")
 
@@ -190,6 +200,7 @@ class MainWindow(QtWidgets.QMainWindow):
         Sanity check
         """
         print("working")
+
 
 class DatabaseSQLite:
     """
@@ -443,13 +454,13 @@ if __name__ == '__main__':
                             "subject": f"{sample(a, 1)[0]}"})                        
     """
 
-    #print(db.readAll())
-    #print(db.find(values={'level': ["C2"]}, limit=10, offset=82))
-    #print(db.find(values={'level': ["C2"]}, limit=10, offset=5, count=True))
-    #print(db.find(limit=10, offset=5, count=True))
-    #print(db.find(count=True))
+    # print(db.readAll())
+    # print(db.find(values={'level': ["C2"]}, limit=10, offset=82))
+    # print(db.find(values={'level': ["C2"]}, limit=10, offset=5, count=True))
+    # print(db.find(limit=10, offset=5, count=True))
+    # print(db.find(count=True))
 
-    #print(db.Connect(db.RunCommand, "select count(*)"))
+    # print(db.Connect(db.RunCommand, "select count(*)"))
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.dbLink(db)
@@ -457,4 +468,3 @@ if __name__ == '__main__':
     window.show()
     app.exec()
     db.columnNames()
-
