@@ -146,20 +146,34 @@ class MainWindow(QtWidgets.QMainWindow):
                 column_list = ColList(f"{i}", parent=self)
                 self.TagsH.insertWidget(self.TagsH.count() - 1, column_list)
                 self.TagsH.itemAt(self.TagsH.count() - 2).widget().loadList(self.db.columnsDistinct(col=i))
-                column_list.selection_change.connect(self.SC)
-                # self.ButtonClearAll.clicked.connect(self.clearAllSelected)
+                column_list.selection_change.connect(self.numberOfElementsTextUpdate)
 
         self.label_numbe_of_elements.setText(f"Items: {self.db.find(count=True)[0]}")
 
-    def applyFilters(self):
+    def getFiltersFromColumns(self):
         """
-        Gets the selected values in each colList widget and filters out every item not containing these values
+        Gets the selected values in each colList widget
+        :return: dictionary
         """
         filters = {}
         for widget in self.scrollFilters.findChildren(ColList):
             if len(widget.SelectedItems()):
                 filters[widget.title] = widget.SelectedItems()
-        self.loadData(values=filters)
+        return filters
+
+    def applyFilters(self):
+        """
+        Gets the selected values in each colList widget and filters out every item not containing these values
+        """
+
+        self.loadData(values=self.getFiltersFromColumns())
+        self.numberOfElementsTextUpdate()
+
+
+    def numberOfElementsTextUpdate(self):
+
+        self.label_numbe_of_elements.setText(f"Items: {self.db.find(values=self.getFiltersFromColumns(), count=True)[0]}")
+
 
     def loadData(self, values=None):
         """
