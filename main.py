@@ -169,11 +169,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.loadData(values=self.getFiltersFromColumns())
         self.numberOfElementsTextUpdate()
 
-
     def numberOfElementsTextUpdate(self):
-
-        self.label_numbe_of_elements.setText(f"Items: {self.db.find(values=self.getFiltersFromColumns(), count=True)[0]}")
-
+        """
+        Updates label_numbe_of_elements
+        """
+        self.label_numbe_of_elements.setText(
+            f"Items: {self.db.find(values=self.getFiltersFromColumns(), count=True)[0]}")
 
     def loadData(self, values=None):
         """
@@ -468,13 +469,6 @@ if __name__ == '__main__':
                             "subject": f"{sample(a, 1)[0]}"})                        
     """
 
-    # print(db.readAll())
-    # print(db.find(values={'level': ["C2"]}, limit=10, offset=82))
-    # print(db.find(values={'level': ["C2"]}, limit=10, offset=5, count=True))
-    # print(db.find(limit=10, offset=5, count=True))
-    # print(db.find(count=True))
-
-    # print(db.Connect(db.RunCommand, "select count(*)"))
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.dbLink(db)
