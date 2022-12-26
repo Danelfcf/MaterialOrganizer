@@ -13,6 +13,8 @@ from PyQt6 import QtCore, QtWidgets, QtPrintSupport
 from PyQt6 import uic
 from PyQt6.QtWidgets import QWidget
 
+import pickle
+
 
 class Row:
     """
@@ -86,22 +88,20 @@ class ColList(QWidget):
         print("hi")
 
 
-class MainWindow(QtWidgets.QMainWindow):
+class SQLViewer(QWidget):
     """
-    Main application
+    Sql viewer
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        uic.loadUi("MainWindow.ui", self)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # Load the GUI
+        uic.loadUi("SQLViewer.ui", self)
         self.scrollFilters.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         # Exercises_Tab
         self.ButtonClearAll.clicked.connect(self.clearAllSelected)
         self.ButtonApply.clicked.connect(self.applyFilters)
-
-        # Selected_tab
-        self.ButtonPrint.clicked.connect(self.Print)
 
         # trying to enable drag and drop
         self.tableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
@@ -200,6 +200,36 @@ class MainWindow(QtWidgets.QMainWindow):
         for widget in self.scrollFilters.findChildren(ColList):
             widget.clearSel()
 
+
+class MainWindow(QtWidgets.QMainWindow):
+    """
+    Main application
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        uic.loadUi("MainWindow.ui", self)
+
+        self.dbviewer = SQLViewer()
+        self.DatabaseLoc = None
+        self.LoadData()
+
+        if self.DatabaseLoc:
+            self.db = DatabaseSQLite(self.DatabaseLoc[0])
+            self.dbviewer.dbLink(self.db)
+            self.dbviewer.loadTags()
+
+        self.tab_Excerciese.addWidget(self.dbviewer)
+        # Selected_tab
+        self.ButtonPrint.clicked.connect(self.Print)
+
+    def LoadData(self):
+        """
+        Loads variables
+        """
+        with open('objs.pkl', 'rb') as f:
+            self.DatabaseLoc = pickle.load(f)
+
     def Print(self):
         """
         Opens print dialog
@@ -230,11 +260,11 @@ class DatabaseSQLite:
     find, to do
     """
 
-    def __init__(self):
-        self.defaultDBName = "database.db"
+    def __init__(self, db_loc='', name='database.db'):
+        self.defaultDBName = name
         self.defaultTable = "Material"
         self.dbPath = False
-        self.Create()
+        self.Create(path=db_loc, name=name)
 
     def Create(self, path='', name=None):
         """
@@ -245,7 +275,6 @@ class DatabaseSQLite:
         :return: True if database connection is valid
                  str if database connection Failed
         """
-
         if name is None:
             name = self.defaultDBName
 
@@ -397,7 +426,7 @@ class DatabaseSQLite:
         """
         if table is None:
             table = self.defaultTable
-        a = db.Connect(self.RunCommand, f"select name from pragma_table_info('{table}')")
+        a = self.Connect(self.RunCommand, f"select name from pragma_table_info('{table}')")
         return list(map(lambda x: x[0], a))
 
     def columnsDistinct(self, col="", table=None):
@@ -457,7 +486,7 @@ class DatabaseSQLite:
 
 
 if __name__ == '__main__':
-    db = DatabaseSQLite()
+
     """
     Generate dummy Data for database
     a = ["simple present", "Present Continuous", "Simple Past", "Past Continuous", "Present Perfect",
@@ -471,8 +500,5 @@ if __name__ == '__main__':
 
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
-    window.dbLink(db)
-    window.loadTags()
     window.show()
     app.exec()
-    db.columnNames()
