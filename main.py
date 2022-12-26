@@ -11,7 +11,7 @@ from sqlite3 import Error
 
 from PyQt6 import QtCore, QtWidgets, QtPrintSupport
 from PyQt6 import uic
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget, QDialog
 
 import pickle
 
@@ -86,6 +86,18 @@ class ColList(QWidget):
         Sanity check
         """
         print("hi")
+
+
+class Preferences(QDialog):
+    """
+    pref window
+    """
+    def __init__(self, parent=None, db_loc=''):
+        super().__init__(parent)
+        # Load the GUI
+        uic.loadUi("Preferences.ui", self)
+        print(db_loc)
+        self.lineEdit_SQLDB_location.setText(db_loc)
 
 
 class SQLViewer(QWidget):
@@ -210,15 +222,20 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__(*args, **kwargs)
         uic.loadUi("MainWindow.ui", self)
 
+        # Move checking for db loaction to another method in this class to clean main
         self.dbviewer = SQLViewer()
         self.DatabaseLoc = None
         self.LoadData()
 
         if self.DatabaseLoc:
-            self.db = DatabaseSQLite(self.DatabaseLoc[0])
+            self.db = DatabaseSQLite(self.DatabaseLoc)
             self.dbviewer.dbLink(self.db)
             self.dbviewer.loadTags()
 
+        # keep all menu actions here in __init__
+        self.actionPreferences.triggered.connect(self.Preferences)
+
+        # this will be removed to anoter class
         self.tab_Excerciese.addWidget(self.dbviewer)
         # Selected_tab
         self.ButtonPrint.clicked.connect(self.Print)
@@ -228,7 +245,12 @@ class MainWindow(QtWidgets.QMainWindow):
         Loads variables
         """
         with open('objs.pkl', 'rb') as f:
-            self.DatabaseLoc = pickle.load(f)
+            self.DatabaseLoc = pickle.load(f)[0]
+
+    def Preferences(self):
+        prefs = Preferences(db_loc=self.DatabaseLoc)
+        if prefs.exec():
+            pass
 
     def Print(self):
         """
