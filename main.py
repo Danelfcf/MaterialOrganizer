@@ -11,7 +11,7 @@ from sqlite3 import Error
 
 from PyQt6 import QtCore, QtWidgets, QtPrintSupport
 from PyQt6 import uic
-from PyQt6.QtWidgets import QWidget, QDialog
+from PyQt6.QtWidgets import QWidget, QDialog, QSpinBox
 
 import pickle
 
@@ -123,6 +123,9 @@ class SQLViewer(QWidget):
         self.tableWidget.setDropIndicatorShown(True)
         self.tableWidget.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.InternalMove)
 
+        # Page selection
+        self.spinBox_page.valueChanged.connect(self.pageChange)
+
         self.db = False
         self.columns = None
         self.loadedData = False
@@ -140,6 +143,19 @@ class SQLViewer(QWidget):
         self.tableWidget.setColumnCount(len(self.columns))
         self.tableWidget.setHorizontalHeaderLabels(self.columns)
         self.loadData()
+
+    def setPages(self):
+        """
+        page counter logic
+        """
+        max_pages = round(0.5+self.db.find(values=self.getFiltersFromColumns(), count=True)[0] / self.DataDepth)
+        self.label_number_of_pages.setText(f"{max_pages}")
+        self.spinBox_page.setMaximum(max_pages)
+        self.spinBox_page.setValue(0)
+
+    def pageChange(self):
+        print("change", self.spinBox_page.value())
+        self.loadData(values=self.getFiltersFromColumns())
 
     def loadTags(self):
         """
@@ -162,6 +178,7 @@ class SQLViewer(QWidget):
                 column_list.selection_change.connect(self.numberOfElementsTextUpdate)
 
         self.numberOfElementsTextUpdate()
+        self.setPages()
 
     def getFiltersFromColumns(self):
         """
@@ -181,6 +198,7 @@ class SQLViewer(QWidget):
 
         self.loadData(values=self.getFiltersFromColumns())
         self.numberOfElementsTextUpdate()
+        self.setPages()
 
     def numberOfElementsTextUpdate(self):
         """
@@ -196,7 +214,7 @@ class SQLViewer(QWidget):
         self.tableWidget.clear()
         self.tableWidget.setRowCount(0)
         self.loadedData = []
-        a = self.db.find(values, limit=100)
+        a = self.db.find(values, limit=self.DataDepth, offset=self.spinBox_page.value()*self.DataDepth)
         for i in a:
             self.loadedData.append(Row(self.columns, i).row)
         for i in range(len(self.loadedData)):
