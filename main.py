@@ -11,7 +11,7 @@ from sqlite3 import Error
 
 from PyQt6 import QtCore, QtWidgets, QtPrintSupport
 from PyQt6 import uic
-from PyQt6.QtWidgets import QWidget, QDialog, QSpinBox
+from PyQt6.QtWidgets import QWidget, QDialog, QSpinBox, QFileDialog
 
 import pickle
 
@@ -97,8 +97,17 @@ class Preferences(QDialog):
         super().__init__(parent)
         # Load the GUI
         uic.loadUi("Preferences.ui", self)
-        print(db_loc)
+
         self.lineEdit_SQLDB_location.setText(db_loc)
+        self.pushButton_sqlLocation.clicked.connect(self.SQLFileDialog)
+
+    def SQLFileDialog(self):
+        dialog = QFileDialog().getExistingDirectory()
+        self.lineEdit_SQLDB_location.setText(dialog)
+
+    @staticmethod
+    def SC():
+        print("working")
 
 
 class SQLViewer(QWidget):
@@ -125,11 +134,11 @@ class SQLViewer(QWidget):
 
         # Page selection
         self.spinBox_page.valueChanged.connect(self.pageChange)
+        self.comboBox_data_depth.currentIndexChanged.connect(lambda: self.loadData(values=self.getFiltersFromColumns()))
 
         self.db = False
         self.columns = None
         self.loadedData = False
-        self.DataDepth = 10
 
         self.update()
 
@@ -148,7 +157,8 @@ class SQLViewer(QWidget):
         """
         page counter logic
         """
-        max_pages = round(0.5+self.db.find(values=self.getFiltersFromColumns(), count=True)[0] / int(self.comboBox_data_depth.currentText()))
+        max_pages = round(0.5+self.db.find(values=self.getFiltersFromColumns(), count=True)[0]
+                          / int(self.comboBox_data_depth.currentText()))
         self.label_number_of_pages.setText(f"{max_pages}")
         self.spinBox_page.setMaximum(max_pages)
         self.spinBox_page.setValue(0)
@@ -275,7 +285,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         prefs = Preferences(db_loc=self.DatabaseLoc)
         if prefs.exec():
-            pass
+            self.DatabaseLoc = prefs.lineEdit_SQLDB_location.text()
 
     def Print(self):
         """
