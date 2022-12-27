@@ -81,7 +81,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label_numbe_of_elements">
+       <widget class="QLabel" name="label_number_of_elements">
         <property name="text">
          <string>TextLabel</string>
         </property>

@@ -74,7 +74,8 @@ class ColList(QWidget):
         """
         return [item.text() for item in self.listWidget.selectedItems()]
 
-    def UserSelectionChange(self):
+    @staticmethod
+    def UserSelectionChange():
         """
         custom signal
         """
@@ -160,7 +161,7 @@ class SQLViewer(QWidget):
                 self.TagsH.itemAt(self.TagsH.count() - 2).widget().loadList(self.db.columnsDistinct(col=i))
                 column_list.selection_change.connect(self.numberOfElementsTextUpdate)
 
-        self.label_numbe_of_elements.setText(f"Items: {self.db.find(count=True)[0]}")
+        self.numberOfElementsTextUpdate()
 
     def getFiltersFromColumns(self):
         """
@@ -183,9 +184,9 @@ class SQLViewer(QWidget):
 
     def numberOfElementsTextUpdate(self):
         """
-        Updates label_numbe_of_elements
+        Updates label_number_of_elements
         """
-        self.label_numbe_of_elements.setText(
+        self.label_number_of_elements.setText(
             f"Items: {self.db.find(values=self.getFiltersFromColumns(), count=True)[0]}")
 
     def loadData(self, values=None):
@@ -222,7 +223,7 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__(*args, **kwargs)
         uic.loadUi("MainWindow.ui", self)
 
-        # Move checking for db loaction to another method in this class to clean main
+        # Move checking for db location to another method in this class to clean main
         self.dbviewer = SQLViewer()
         self.DatabaseLoc = None
         self.LoadData()
@@ -235,7 +236,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # keep all menu actions here in __init__
         self.actionPreferences.triggered.connect(self.Preferences)
 
-        # this will be removed to anoter class
+        # this will be removed to another class
         self.tab_Excerciese.addWidget(self.dbviewer)
         # Selected_tab
         self.ButtonPrint.clicked.connect(self.Print)
@@ -248,6 +249,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.DatabaseLoc = pickle.load(f)[0]
 
     def Preferences(self):
+        """
+        Opens Preferences popup
+        """
         prefs = Preferences(db_loc=self.DatabaseLoc)
         if prefs.exec():
             pass
@@ -472,11 +476,12 @@ class DatabaseSQLite:
         Find rows with multiple values and or columns
 
         :param values: Dict{column: list(Values)}
-        :param table: table in SQL database
-        :param operation: SQL operation (AND, OR, ...) for columns
-        :param selection: SQL select statement
+        :param table: (str) table in SQL database
+        :param operation: (str) SQL operation (AND, OR, ...) for columns
+        :param selection: (str) SQL select statement
         :param limit: (int) limits the number of results
         :param offset: (int) offsets the position sql starts listing
+        :param count: (bool) set command to count row count according to other inputs
 
         Example:
         db.find(values={'Column_1': [1, 2, 3], 'Column_2': ["C2"]})
@@ -491,7 +496,7 @@ class DatabaseSQLite:
         if isinstance(values, dict):
             condition = ''
             for keys in values.keys():
-                val = ', '.join("?" for value in values[keys])
+                val = ', '.join("?" for _ in values[keys])
                 condition += f"{keys} IN ({val}) {operation} "
             query = f'SELECT {f"COUNT ({selection})" if count else f"{selection}"} FROM {table} ' \
                     f'{"WHERE" if values else ""} %s' % condition[:-4]
