@@ -148,13 +148,15 @@ class SQLViewer(QWidget):
         """
         page counter logic
         """
-        max_pages = round(0.5+self.db.find(values=self.getFiltersFromColumns(), count=True)[0] / self.DataDepth)
+        max_pages = round(0.5+self.db.find(values=self.getFiltersFromColumns(), count=True)[0] / int(self.comboBox_data_depth.currentText()))
         self.label_number_of_pages.setText(f"{max_pages}")
         self.spinBox_page.setMaximum(max_pages)
         self.spinBox_page.setValue(0)
 
     def pageChange(self):
-        print("change", self.spinBox_page.value())
+        """
+        Handles value change for page spinbox
+        """
         self.loadData(values=self.getFiltersFromColumns())
 
     def loadTags(self):
@@ -214,7 +216,8 @@ class SQLViewer(QWidget):
         self.tableWidget.clear()
         self.tableWidget.setRowCount(0)
         self.loadedData = []
-        a = self.db.find(values, limit=self.DataDepth, offset=self.spinBox_page.value()*self.DataDepth)
+        a = self.db.find(values, limit=int(self.comboBox_data_depth.currentText()),
+                         offset=self.spinBox_page.value()*int(self.comboBox_data_depth.currentText()))
         for i in a:
             self.loadedData.append(Row(self.columns, i).row)
         for i in range(len(self.loadedData)):
