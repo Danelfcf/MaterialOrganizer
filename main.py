@@ -2,16 +2,18 @@
 main for GUI project
 """
 
+import os
 import itertools
 # Only to access database
 import sqlite3
+from sqlitehandler import DatabaseSQLite
 # Only needed for access to command line arguments
 import sys
 from sqlite3 import Error
 
 from PyQt6 import QtCore, QtWidgets, QtPrintSupport
 from PyQt6 import uic
-from PyQt6.QtWidgets import QWidget, QDialog, QSpinBox, QFileDialog
+from PyQt6.QtWidgets import QWidget, QDialog, QSpinBox, QFileDialog, QComboBox
 
 import pickle
 
@@ -93,6 +95,7 @@ class Preferences(QDialog):
     """
     pref window
     """
+
     def __init__(self, parent=None, db_loc=''):
         super().__init__(parent)
         # Load the GUI
@@ -104,6 +107,7 @@ class Preferences(QDialog):
     def SQLFileDialog(self):
         dialog = QFileDialog().getExistingDirectory()
         self.lineEdit_SQLDB_location.setText(dialog)
+        print(dialog)
 
     @staticmethod
     def SC():
@@ -119,11 +123,21 @@ class SQLViewer(QWidget):
         super().__init__(parent)
         # Load the GUI
         uic.loadUi("SQLViewer.ui", self)
-        self.scrollFilters.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        # Exercises_Tab
-        self.ButtonClearAll.clicked.connect(self.clearAllSelected)
-        self.ButtonApply.clicked.connect(self.applyFilters)
+        self.ConfigureWidgets()
+        self.SetupSignalConnections()
+
+        self.db = False
+        self.columns = None
+        self.loadedData = False
+
+        self.update()
+
+    def ConfigureWidgets(self):
+        """
+        Configure loaded widgets
+        """
+        self.scrollFilters.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         # trying to enable drag and drop
         self.tableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
@@ -132,15 +146,20 @@ class SQLViewer(QWidget):
         self.tableWidget.setDropIndicatorShown(True)
         self.tableWidget.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.InternalMove)
 
-        # Page selection
+    def SetupSignalConnections(self):
+        """
+        Sets up Signal handling for GUI
+        """
+        # Filters Area
+        self.ButtonClearAll.clicked.connect(self.clearAllSelected)
+        self.ButtonApply.clicked.connect(self.applyFilters)
+        self.comboBox_databases.currentTextChanged.connect(self.dataBaseSelectionBox)
+
+        # TableWidgetArea
+
+        # Page selection area at the foot of page
         self.spinBox_page.valueChanged.connect(self.pageChange)
         self.comboBox_data_depth.currentIndexChanged.connect(lambda: self.loadData(values=self.getFiltersFromColumns()))
-
-        self.db = False
-        self.columns = None
-        self.loadedData = False
-
-        self.update()
 
     def dbLink(self, x):
         """
@@ -151,13 +170,17 @@ class SQLViewer(QWidget):
         self.columns = self.db.columnNames()
         self.tableWidget.setColumnCount(len(self.columns))
         self.tableWidget.setHorizontalHeaderLabels(self.columns)
+        self.comboBox_databases.addItems(self.db.Existence())
         self.loadData()
+
+    def dataBaseSelectionBox(self):
+        print("ad")
 
     def setPages(self):
         """
         page counter logic
         """
-        max_pages = round(0.5+self.db.find(values=self.getFiltersFromColumns(), count=True)[0]
+        max_pages = round(0.5 + self.db.find(values=self.getFiltersFromColumns(), count=True)[0]
                           / int(self.comboBox_data_depth.currentText()))
         self.label_number_of_pages.setText(f"{max_pages}")
         self.spinBox_page.setMaximum(max_pages)
@@ -227,7 +250,7 @@ class SQLViewer(QWidget):
         self.tableWidget.setRowCount(0)
         self.loadedData = []
         a = self.db.find(values, limit=int(self.comboBox_data_depth.currentText()),
-                         offset=self.spinBox_page.value()*int(self.comboBox_data_depth.currentText()))
+                         offset=self.spinBox_page.value() * int(self.comboBox_data_depth.currentText()))
         for i in a:
             self.loadedData.append(Row(self.columns, i).row)
         for i in range(len(self.loadedData)):
@@ -304,247 +327,7 @@ class MainWindow(QtWidgets.QMainWindow):
         print("working")
 
 
-class DatabaseSQLite:
-    """
-    SQL implementation for Python. contains The following classes:
-    Create, creates a database if one isn't present;
-    Connect, opens database and runs function and arguments passed to it;
-    CreateTable, creates a table in a given database;
-    add, adds data to a table;
-    readAll, (not recommended) returns tuple with all rows within the database;
-    columnNames, returns list of columns within a table;
-    columnsDistinct, gets distinct values for row in table.
-    find, to do
-    """
-
-    def __init__(self, db_loc='', name='database.db'):
-        self.defaultDBName = name
-        self.defaultTable = "Material"
-        self.dbPath = False
-        self.Create(path=db_loc, name=name)
-
-    def Create(self, path='', name=None):
-        """
-        Connects to a database in path, default is active file, named database.db. If
-        Database does not exist it will be created
-        :param path: (str) database folder's path, must be set according to OS
-        :param name: (str) database name
-        :return: True if database connection is valid
-                 str if database connection Failed
-        """
-        if name is None:
-            name = self.defaultDBName
-
-        try:
-            database = sqlite3.connect(path + name)
-            print(sqlite3.version)
-            if database:
-                database.close()
-                self.dbPath = path + name
-                return True
-        except Error as e:
-            return e
-
-    @staticmethod
-    def RunCommand(c, inputs, *args):
-        """
-
-        :param c: SQLite curser
-        :param inputs: SQL command
-        :return: bool, depending if error found
-        """
-
-        c.execute(inputs, args)
-        try:
-            return 1
-        except Error as e:
-            return e
-
-    def Connect(self, command, *args, save=False, **kwargs):
-        """
-        Input function, args and kwargs.
-        print(db.Connect(db.RunCommand, sql_create_tasks_table))
-
-        :param save:
-        :param command: function
-        :param args: passed function's arguments
-        :param kwargs: passed function's keyword arguments
-        :return: passed functions return or Error String
-
-        example:
-        Connect(self.RunCommand, SQL_command_string, save=True)
-        """
-        if isinstance(self.dbPath, str):
-            try:
-                database = sqlite3.connect(self.dbPath)
-                curser = database.cursor()
-                rt = True
-                if callable(command):
-                    command(curser, *args, **kwargs)
-                    rt = curser.fetchall()
-                    if save:
-                        database.commit()
-                if database:
-                    database.close()
-                    return rt
-
-            except Error as e:
-                return e
-
-    def CreateTable(self, c, table=None, cols=None, types=None, adds=None):
-        """
-
-        Creates and sets up a table.
-
-        :param c: SQLite curser
-        :param table: (str) Name for the table
-        :param cols: list(str) for name of columns
-        :param types: list(str) informs SQL data type for columns
-        :param adds: additional parameters
-
-        example:
-        print(db.Connect(db.CreateTable, "Material",
-                   ["id", 'hyperlink', 'level', 'subject'],
-                   ["integer", 'text', 'text', 'text'],
-                   ["NOT NULL"]))
-        """
-        if table is None:
-            table = self.defaultTable
-
-        if (isinstance(cols, list)) & \
-                (isinstance(types, list)) & \
-                (isinstance(adds, list)):
-            command_string = f'CREATE TABLE IF NOT EXISTS {table}(\n'
-            for name, typ, add in list(itertools.zip_longest(cols, types, adds, fillvalue="")):
-                command_string += f'{name} {typ} {add},\n'
-            command_string = command_string[:-2] + ");"
-
-            return self.RunCommand(c, command_string)
-
-        else:
-            return False
-
-    def add(self, table=None, data=None):
-        """
-        Adds a row of data to database. All data must be in a dictionary
-        :param table: (str) name of table
-        :param data: (dict) dictionary with column_name : value
-        :return: bool or error string
-
-        example:
-        db.add("Material", {"id": 2,
-                              "hyperlink": "www.google.com",
-                              "level": "C2",
-                              "subject": "simple Present"})
-        """
-        if table is None:
-            table = self.defaultTable
-
-        if data:
-            part1 = f"INSERT INTO {table}("
-            part2 = f"VALUES("
-            for col, val in zip(data.keys(), data.values()):
-                part1 += f"'{col}', "
-                part2 += f"'{val}', "
-
-            command_string = part1[:-2] + ") " + part2[:-2] + ");"
-            return self.Connect(self.RunCommand, command_string, save=True)
-
-    def readAll(self, table=None, limit=None, offset=None):
-        """
-
-        :param table: (str) table name
-        :param limit: (int) limits the number of results
-        :param offset: (int) offsets the position sql starts listing
-        :return: tuple of row in table
-
-        example:
-        db.readAll("Material")
-        """
-        if table is None:
-            table = self.defaultTable
-
-        cmd = f"SELECT * FROM {table}"
-
-        if limit:
-            cmd += f" LIMIT {limit}"
-        if offset:
-            cmd += f" OFFSET {offset}"
-        return self.Connect(self.RunCommand, cmd)
-
-    def columnNames(self, table=None):
-        """
-        Gets the name for each column in table
-        :param table: (str) table name
-        :return: list(str)
-
-        example:
-        print(db.columnNames())
-        """
-        if table is None:
-            table = self.defaultTable
-        a = self.Connect(self.RunCommand, f"select name from pragma_table_info('{table}')")
-        return list(map(lambda x: x[0], a))
-
-    def columnsDistinct(self, col="", table=None):
-        """
-
-        :param col: (str) column name
-        :param table: (str) table name
-        :return: tuple of (str)
-
-        example:
-        db.columnsDistinct("Material", "id")
-        """
-        if table is None:
-            table = self.defaultTable
-
-        result = self.Connect(self.RunCommand, f"SELECT DISTINCT  {col} FROM {table}")
-        return [item for sublist in result for item in sublist]
-
-    def find(self, values=None, table=None, selection='*', operation='AND', limit=None, offset=None, count=False):
-        """
-        Find rows with multiple values and or columns
-
-        :param values: Dict{column: list(Values)}
-        :param table: (str) table in SQL database
-        :param operation: (str) SQL operation (AND, OR, ...) for columns
-        :param selection: (str) SQL select statement
-        :param limit: (int) limits the number of results
-        :param offset: (int) offsets the position sql starts listing
-        :param count: (bool) set command to count row count according to other inputs
-
-        Example:
-        db.find(values={'Column_1': [1, 2, 3], 'Column_2': ["C2"]})
-        SQLite command:
-        SELECT * FROM TABLE_NAME WHERE Column_1 IN (?, ?, ?) AND Column_2 IN (?)
-        """
-        if table is None:
-            table = self.defaultTable
-        if values is None:
-            values = {}
-
-        if isinstance(values, dict):
-            condition = ''
-            for keys in values.keys():
-                val = ', '.join("?" for _ in values[keys])
-                condition += f"{keys} IN ({val}) {operation} "
-            query = f'SELECT {f"COUNT ({selection})" if count else f"{selection}"} FROM {table} ' \
-                    f'{"WHERE" if values else ""} %s' % condition[:-4]
-
-            if limit:
-                query += f"LIMIT {limit}"
-            if offset and not count:
-                query += f" OFFSET {offset}"
-
-            result = self.Connect(self.RunCommand, query,
-                                  *[item for sublist in list(values.values()) for item in sublist])
-
-            return result[0] if count else result
-
-
 if __name__ == '__main__':
-
     """
     Generate dummy Data for database
     a = ["simple present", "Present Continuous", "Simple Past", "Past Continuous", "Present Perfect",
