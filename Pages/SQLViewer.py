@@ -2,6 +2,7 @@ from PyQt6 import QtCore, QtWidgets, QtPrintSupport
 from PyQt6 import uic
 from PyQt6.QtWidgets import QWidget, QDialog, QSpinBox, QFileDialog, QComboBox
 
+
 class Row:
     """
     Build list of items to be placed in table.
@@ -20,6 +21,7 @@ class Row:
             except KeyError:
                 self.row.append("-")
                 # self.row.append(QtWidgets.QCheckBox())
+
 
 class ColList(QWidget):
     """
@@ -79,10 +81,10 @@ class SQLViewer(QWidget):
     Sql viewer
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, file="SQLViewer.ui"):
         super().__init__(parent)
         # Load the GUI
-        uic.loadUi("SQLViewer.ui", self)
+        uic.loadUi(file, self)
 
         self.ConfigureWidgets()
         self.SetupSignalConnections()
@@ -227,10 +229,12 @@ class SQLViewer(QWidget):
         for widget in self.scrollFilters.findChildren(ColList):
             widget.clearSel()
 
+
 if __name__ == "__main__":
     import sys
+
     print("Running SQLite3 viewer Independnetly")
     app = QtWidgets.QApplication(sys.argv)
-    window = SQLViewer()
+    window = SQLViewer(file="..//SQLViewer.ui")
     window.show()
     app.exec()
