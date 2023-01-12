@@ -32,7 +32,11 @@ class ColList(QWidget):
     def __init__(self, col, parent=None):
         super().__init__(parent)
         # Load the GUI
-        uic.loadUi("Listwidget.ui", self)
+        if __name__ == "__main__":
+            uic.loadUi("..//Listwidget.ui", self)
+        else:
+            uic.loadUi("Listwidget.ui", self)
+
         self.title = col
         self.groupBox.setTitle(col)
         self.listWidget.setSortingEnabled(True)
@@ -232,9 +236,15 @@ class SQLViewer(QWidget):
 
 if __name__ == "__main__":
     import sys
+    # Only to access database
+    from sqlitehandler import DatabaseSQLite
 
-    print("Running SQLite3 viewer Independnetly")
+    db = DatabaseSQLite()
+
+    print("Running SQLite3 viewer Independently")
     app = QtWidgets.QApplication(sys.argv)
     window = SQLViewer(file="..//SQLViewer.ui")
+    window.dbLink(db)
+    window.loadTags()
     window.show()
     app.exec()
